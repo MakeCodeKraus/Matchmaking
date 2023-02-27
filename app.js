@@ -14,6 +14,7 @@ app.get('/', (req, res) => {
 });
 
 const connectedUsers = new Set();
+const waitingUsers = [];
 
 const validarSiElUsuarioYaEstaConectado = (username) => {
   return connectedUsers.has(username);
@@ -24,6 +25,7 @@ io.on('connection', (socket) => {
   if (!username || validarSiElUsuarioYaEstaConectado(username)) {
     socket.emit("connectionRejected");
     socket.disconnect();
+    return;
   }
 
   console.log(username + ' connected');
@@ -33,8 +35,24 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log(username + ' disconnected');
     connectedUsers.delete(username);
+    const index = waitingUsers.indexOf(socket);
+    if (index !== -1) {
+      waitingUsers.splice(index, 1);
+    }
   });
-})
+
+  socket.on('searchMatch', () => {
+    waitingUsers.push(socket);
+
+    if (waitingUsers.length >= 2) {
+        const user1 = waitingUsers.shift();
+        const user2 = waitingUsers.shift();
+
+        user1.emit("matchReady", { opponent: username });
+        user2.emit("matchReady", { opponent: user1.handshake.query.username });
+    }
+});  
+});
 
 
 server.listen(3000, () => {
