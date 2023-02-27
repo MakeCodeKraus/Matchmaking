@@ -10,40 +10,33 @@ const publicPath = path.resolve(__dirname, "./public");
 app.use(express.static(publicPath));
 
 app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/public/index.html');
-  });
-   
-  const validarSiElUsuarioYaEstaConectado = (username)=>{
-    return true;
+  res.sendFile(__dirname + '/public/index.html');
+});
+
+const connectedUsers = new Set();
+
+const validarSiElUsuarioYaEstaConectado = (username) => {
+  return connectedUsers.has(username);
+}
+
+io.on('connection', (socket) => {
+  const username = socket.handshake.query.username;
+  if (!username || validarSiElUsuarioYaEstaConectado(username)) {
+    socket.emit("connectionRejected");
+    socket.disconnect();
   }
-  //Por Resolver
-  // io.use((socket,next)=>{
-  //    const username = socket.handshake.query.username;
-  //   if(!username || validarSiElUsuarioYaEstaConectado(username)){
-  //     socket.emit("connectionRejected");
-  //     return next(new Error("El usuario ya esta conectado"))
-  //   }
-  //   else{
-  //     socket.username = username;
-  //     next();
-  //   }
-  // })
 
- io.on('connection', (socket)=>{
-   const username = socket.handshake.query.username;
-   if(!username || validarSiElUsuarioYaEstaConectado(username)){
-       socket.emit("connectionRejected");
-       socket.disconnect();
-     }
-     
-     console.log(username+' connected');
-  
-      socket.on('disconnect', () => {
-        console.log( username+' disconnected');
-      });
- } ) 
+  console.log(username + ' connected');
+  connectedUsers.add(username);
 
 
-  server.listen(3000, () => {
-    console.log('listening on *:3000');
-  }); 
+  socket.on('disconnect', () => {
+    console.log(username + ' disconnected');
+    connectedUsers.delete(username);
+  });
+})
+
+
+server.listen(3000, () => {
+  console.log('listening on *:3000');
+}); 
