@@ -22,6 +22,7 @@ const validarSiElUsuarioYaEstaConectado = (username) => {
 
 io.on('connection', (socket) => {
   const username = socket.handshake.query.username;
+  
   if (!username || validarSiElUsuarioYaEstaConectado(username)) {
     socket.emit("connectionRejected");
     socket.disconnect();
@@ -30,7 +31,6 @@ io.on('connection', (socket) => {
 
   console.log(username + ' connected');
   connectedUsers.add(username);
-
 
   socket.on('disconnect', () => {
     console.log(username + ' disconnected');
@@ -45,15 +45,23 @@ io.on('connection', (socket) => {
     waitingUsers.push(socket);
 
     if (waitingUsers.length >= 2) {
-        const user1 = waitingUsers.shift();
-        const user2 = waitingUsers.shift();
+      
+      const user1 = waitingUsers.shift();
+      const user2 = waitingUsers.shift();
 
-        user1.emit("matchReady", { opponent: username });
-        user2.emit("matchReady", { opponent: user1.handshake.query.username });
+      user1.emit("matchReady", { opponent: username });
+      user2.emit("matchReady", { opponent: user1.handshake.query.username });
     }
-});  
-});
+  });
 
+  socket.on('stopSearchMatch', () => {
+    const index = waitingUsers.indexOf(socket);
+    if (index !== -1) {
+      waitingUsers.splice(index, 1);
+    }
+  });
+
+});
 
 server.listen(3000, () => {
   console.log('listening on *:3000');
